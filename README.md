@@ -118,9 +118,50 @@ go_gc_duration_seconds_count 0
 go_goroutines 7
 # HELP go_info Information about the Go environment.
 # TYPE go_info gauge
-go_info{version="go1.15.14"} 1
+go_info{version="1.23.0"} 1
 # HELP go_memstats_alloc_bytes Number of bytes allocated and still in use.
 # TYPE go_memstats_alloc_bytes gauge
 ...
 ```
-官方仓库[示例](https://github.com/prometheus/client_golang/tree/main/examples)
+更多demo可以参考官方仓库[示例](https://github.com/prometheus/client_golang/tree/main/examples)
+
+### 如何自定义metrics
+demo:
+```go
+package main
+
+import (
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+func main() {
+	requsetQps := prometheus.NewCounter(prometheus.CounterOpts{
+		Name:      "request_qps",
+		Namespace: "stathe",
+		Help:      "The a request qps",
+	},
+	)
+
+	go func() {
+		for {
+			//Inc将计数器加1。
+			requsetQps.Inc()
+			time.Sleep(time.Second)
+		}
+	}()
+
+	prometheus.MustRegister(requsetQps)
+
+	http.Handle("/metrics", promhttp.Handler())
+	log.Fatalln(http.ListenAndServe(":8080", nil))
+}
+
+```
+可以看到使用NewCounter方法可以很快地帮我们创建一个Prometheus Counter数据类型实例。
+
+Counter接口的定义包含了Counter本身的特性-只能增加即Inc和Add，同时还包含Meterics、Collector接口
